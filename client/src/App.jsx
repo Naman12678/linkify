@@ -19,7 +19,7 @@ function App() {
 
     try {
       // Update the endpoint to the deployed backend URL
-      const response = await fetch('http://localhost:5000', {
+      const response = await fetch(`${import.meta.env.BACKEND_URL}/shorten`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ longUrl, customCode }),

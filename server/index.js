@@ -120,4 +120,4 @@ app.get("/:shortCode/analytics", async (req, res) => {
     }
 });
 
-app.listen(PORT, () => console.log(`Server running on ${process.env.BACKEND_URL || `http://localhost:${PORT}`}`));
+app.listen(PORT, () => console.log(`Server running on ${process.env.BACKEND_URL}`));
