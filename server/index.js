@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 5000;
 // Enable CORS
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL, // Use FRONTEND_URL from .env
+        origin: `https://linkified-iota.vercel.app/`, // Use FRONTEND_URL from .env
         methods: ["GET", "POST", "PUT", "DELETE"],
         credentials: true,
     })

@@ -19,7 +19,7 @@ function App() {
 
     try {
       // Update the endpoint to the deployed backend URL
-      const response = await fetch(`${import.meta.env.BACKEND_URL}/shorten`, {
+      const response = await fetch(`https://linkify-1-0ja9.onrender.com/shorten`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ longUrl, customCode }),
