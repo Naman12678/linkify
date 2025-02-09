@@ -4,17 +4,18 @@ import { customAlphabet } from "nanoid";
 import cors from "cors";
 import connectDB from "./db.js";
 import dotenv from "dotenv";
+import QRCode from "qrcode";
 
 // Configure dotenv
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 
 // Enable CORS
 app.use(
     cors({
-        origin: `https://linkified-iota.vercel.app/`, // Use FRONTEND_URL from .env
+        origin: `http://localhost:5173`,
         methods: ["GET", "POST", "PUT", "DELETE"],
         credentials: true,
     })
@@ -29,6 +30,15 @@ const urlSchema = new mongoose.Schema({
     longUrl: { type: String, required: true },
     clicks: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
+    expiresAt: { type: Date },
+    clickDetails: [
+        {
+            ipAddress: String,
+            userAgent: String,
+            referrer: String,
+            accessedAt: { type: Date, default: Date.now },
+        },
+    ],
 });
 const URL = mongoose.model("URL", urlSchema);
 
@@ -45,7 +55,7 @@ app.get("/", (req, res) => {
 // Endpoint to shorten the URL
 app.post("/", async (req, res) => {
     try {
-        const { longUrl, customCode } = req.body;
+        const { longUrl, customCode, expiresAt } = req.body;
 
         if (!longUrl) {
             return res.status(400).json({ error: "URL is required" });
@@ -69,9 +79,18 @@ app.post("/", async (req, res) => {
             shortCode = nanoid();
         }
 
-        const newUrl = new URL({ shortCode, longUrl });
+        const newUrl = new URL({
+            shortCode,
+            longUrl,
+            expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+        });
+
         await newUrl.save();
-        res.json({ shortUrl: `${process.env.BACKEND_URL}/${shortCode}` }); // Use BACKEND_URL from .env
+
+        const shortUrl = `${process.env.BACKEND_URL}/${shortCode}`;
+        const qrCodeData = await QRCode.toDataURL(shortUrl);
+
+        res.json({ shortUrl, qrCode: qrCodeData });
     } catch (error) {
         console.error("Error in /shorten endpoint:", error);
         res.status(500).json({ error: "Internal Server Error" });
@@ -88,7 +107,16 @@ app.get("/:shortCode", async (req, res) => {
             return res.status(404).json({ error: "Short URL not found" });
         }
 
+        if (url.expiresAt && new Date() > url.expiresAt) {
+            return res.status(410).json({ error: "This URL has expired." });
+        }
+
         url.clicks += 1;
+        const userAgent = req.headers["user-agent"];
+        const referrer = req.headers["referer"] || "Direct";
+        const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+
+        url.clickDetails.push({ ipAddress, userAgent, referrer });
         await url.save();
 
         res.redirect(url.longUrl);
@@ -113,6 +141,8 @@ app.get("/:shortCode/analytics", async (req, res) => {
             longUrl: url.longUrl,
             clicks: url.clicks,
             createdAt: url.createdAt,
+            expiresAt: url.expiresAt,
+            clickDetails: url.clickDetails,
         });
     } catch (error) {
         console.error("Error in analytics endpoint:", error);
