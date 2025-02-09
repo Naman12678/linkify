@@ -15,7 +15,7 @@ const PORT = 5000;
 // Enable CORS
 app.use(
     cors({
-        origin: `http://localhost:5173`,
+        origin: `https://linkify-xi.vercel.app`,
         methods: ["GET", "POST", "PUT", "DELETE"],
         credentials: true,
     })

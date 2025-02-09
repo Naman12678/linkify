@@ -9,6 +9,8 @@ function App() {
   const [error, setError] = useState("");
   const [analytics, setAnalytics] = useState(null);
 
+  const API_BASE_URL = "https://linkify-0cce.onrender.com";
+
   const handleShorten = async () => {
     setError("");
     setShortUrl("");
@@ -21,7 +23,7 @@ function App() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000`, {
+      const response = await fetch(`${API_BASE_URL}/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ longUrl, customCode, expiresAt }),
@@ -48,7 +50,7 @@ function App() {
 
     try {
       const shortCode = shortUrl.split("/").pop(); // Extract short code from URL
-      const response = await fetch(`http://localhost:5000/${shortCode}/analytics`);
+      const response = await fetch(`${API_BASE_URL}/${shortCode}/analytics`);
 
       const data = await response.json();
 
