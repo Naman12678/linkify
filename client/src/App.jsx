@@ -1,67 +1,95 @@
-import React, { useState } from "react";
-import Auth from "./Auth";
-import AppFeatures from "./AppFeatures";
-import UserUrls from "./UserUrls.jsx"; // New component to manage user's old URLs
+import React, { useState, useEffect } from 'react';
+import LandingPage from './components/LandingPage';
+import Auth from './components/Auth';
+import Dashboard from './components/Dashboard';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const App = () => {
-  const [user, setUser] = useState(null); // Authentication state
-  const [view, setView] = useState("features"); // "features" or "urls"
+  const [user, setUser] = useState(null);
+  const [currentView, setCurrentView] = useState('landing');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check for stored user data
+    const storedUser = localStorage.getItem('linkify_user');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+        setCurrentView('dashboard');
+      } catch (error) {
+        localStorage.removeItem('linkify_user');
+      }
+    }
+    setLoading(false);
+  }, []);
 
   const handleAuthSuccess = (userData) => {
     setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
+    localStorage.setItem('linkify_user', JSON.stringify(userData));
+    setCurrentView('dashboard');
   };
 
   const handleLogout = () => {
     setUser(null);
-    localStorage.removeItem("user");
+    localStorage.removeItem('linkify_user');
+    setCurrentView('landing');
   };
 
-  React.useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
+  const handleGetStarted = () => {
+    setCurrentView('auth');
+  };
 
-  if (!user) {
-    return <Auth onAuthSuccess={handleAuthSuccess} />;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center">
-      <header className="w-full flex justify-between items-center p-4 bg-gray-800">
-        <h1 className="text-2xl font-bold">
-          Welcome, <span className="text-blue-400">{user.email}</span>
-        </h1>
-        <button
-          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
-          onClick={handleLogout}
-        >
-          Logout
-        </button>
-      </header>
-      <nav className="flex justify-center space-x-4 mt-4">
-        <button
-          className={`px-4 py-2 rounded ${
-            view === "features" ? "bg-blue-500" : "bg-gray-700"
-          } hover:bg-blue-600 transition`}
-          onClick={() => setView("features")}
-        >
-          Features
-        </button>
-        <button
-          className={`px-4 py-2 rounded ${
-            view === "urls" ? "bg-blue-500" : "bg-gray-700"
-          } hover:bg-blue-600 transition`}
-          onClick={() => setView("urls")}
-        >
-          My URLs
-        </button>
-      </nav>
-      <main className="flex-grow w-full max-w-4xl mt-6">
-        {view === "features" ? <AppFeatures user={user} /> : <UserUrls user={user} />}
-      </main>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+      <AnimatePresence mode="wait">
+        {currentView === 'landing' && (
+          <motion.div
+            key="landing"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <LandingPage onGetStarted={handleGetStarted} />
+          </motion.div>
+        )}
+        
+        {currentView === 'auth' && (
+          <motion.div
+            key="auth"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Auth 
+              onAuthSuccess={handleAuthSuccess} 
+              onBack={() => setCurrentView('landing')}
+            />
+          </motion.div>
+        )}
+        
+        {currentView === 'dashboard' && user && (
+          <motion.div
+            key="dashboard"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Dashboard user={user} onLogout={handleLogout} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

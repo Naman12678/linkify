@@ -1,3 +1,46 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@layer base {
+  /* Base styles for body and global elements */
+  body {
+    @apply bg-gray-900 text-white;
+  }
+}
+
+@layer components {
+  /* Glassmorphism Effect */
+  .glass-morphism {
+    @apply bg-white/10 backdrop-blur-lg border border-white/20;
+  }
+
+  /* Primary Button */
+  .btn-primary {
+    @apply bg-gradient-to-r from-blue-500 to-purple-600 
+      hover:from-blue-600 hover:to-purple-700 text-white 
+      font-semibold py-3 px-6 rounded-lg shadow-lg 
+      transform transition-all duration-200 hover:scale-105 hover:shadow-xl;
+  }
+
+  /* Secondary Button */
+  .btn-secondary {
+    @apply bg-gray-700 hover:bg-gray-600 text-white 
+      font-semibold py-3 px-6 rounded-lg shadow-lg 
+      transform transition-all duration-200 hover:scale-105;
+  }
+
+  /* Input Field */
+  .input-field {
+    @apply w-full p-4 bg-gray-800/50 border border-gray-600 
+      rounded-lg text-white placeholder-gray-400 
+      focus:ring-2 focus:ring-blue-500 focus:border-transparent 
+      transition-all duration-200;
+  }
+
+  /* Card Component */
+  .card {
+    @apply bg-gray-800/80 backdrop-blur-sm border border-gray-700 
+      rounded-xl shadow-xl p-6 space-y-4;
+  }
+}
