@@ -19,6 +19,7 @@ const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVW
 
 app.use(cors({
   origin: "https://linkify-xi.vercel.app",
+  //origin: "http://localhost:5173",
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 }));
@@ -204,6 +205,7 @@ app.get("/:shortCode", async (req, res) => {
 app.get("/:shortCode/analytics", authMiddleware, async (req, res) => {
   const { shortCode } = req.params;
   const userId = req.user.userId;
+  const { timeRange = 'all' } = req.query;
 
   try {
     const url = await URL.findOne({ shortCode });
@@ -212,19 +214,214 @@ app.get("/:shortCode/analytics", authMiddleware, async (req, res) => {
     if (url.userId.toString() !== userId)
       return res.status(403).json({ error: "Forbidden: You do not own this URL" });
 
+    // Filter click details based on time range
+    const now = new Date();
+    let startDate;
+    
+    switch (timeRange) {
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(0); // All time
+    }
+
+    const filteredClicks = url.clickDetails.filter(click => 
+      new Date(click.accessedAt) >= startDate
+    );
+
+    // Process analytics data
+    const analytics = processAnalyticsData(filteredClicks, url);
+
     res.json({
       shortCode: url.shortCode,
       longUrl: url.longUrl,
-      clicks: url.clicks,
+      totalClicks: url.clicks,
+      filteredClicks: filteredClicks.length,
       createdAt: url.createdAt,
       expiresAt: url.expiresAt,
-      clickDetails: url.clickDetails,
+      timeRange,
+      ...analytics
     });
   } catch (err) {
     console.error("Analytics error:", err);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+// Helper function to process analytics data
+function processAnalyticsData(clickDetails, url) {
+  if (!clickDetails || clickDetails.length === 0) {
+    return {
+      dailyClicks: [],
+      hourlyClicks: [],
+      topReferrers: [],
+      topCountries: [],
+      topDevices: [],
+      topBrowsers: [],
+      topOperatingSystems: []
+    };
+  }
+
+  // Daily clicks over time
+  const dailyClicks = generateDailyClicks(clickDetails);
+  
+  // Hourly distribution
+  const hourlyClicks = generateHourlyDistribution(clickDetails);
+  
+  // Top referrers
+  const topReferrers = generateTopReferrers(clickDetails);
+  
+  // Geographic data (basic IP analysis)
+  const topCountries = generateTopCountries(clickDetails);
+  
+  // Device/Browser analysis
+  const deviceData = analyzeUserAgents(clickDetails);
+  
+  return {
+    dailyClicks,
+    hourlyClicks,
+    topReferrers,
+    topCountries,
+    topDevices: deviceData.devices,
+    topBrowsers: deviceData.browsers,
+    topOperatingSystems: deviceData.os
+  };
+}
+
+function generateDailyClicks(clickDetails) {
+  const dailyData = {};
+  
+  clickDetails.forEach(click => {
+    const date = new Date(click.accessedAt).toISOString().split('T')[0];
+    dailyData[date] = (dailyData[date] || 0) + 1;
+  });
+  
+  // Convert to array format for charts
+  return Object.entries(dailyData)
+    .map(([date, clicks]) => ({ date, clicks }))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+function generateHourlyDistribution(clickDetails) {
+  const hourlyData = Array(24).fill(0);
+  
+  clickDetails.forEach(click => {
+    const hour = new Date(click.accessedAt).getHours();
+    hourlyData[hour]++;
+  });
+  
+  return hourlyData.map((clicks, hour) => ({ hour, clicks }));
+}
+
+function generateTopReferrers(clickDetails) {
+  const referrerCounts = {};
+  
+  clickDetails.forEach(click => {
+    let referrer = click.referrer || 'Direct';
+    
+    // Clean up referrer URLs
+    if (referrer !== 'Direct' && referrer !== 'Unknown') {
+      try {
+        const url = new URL(referrer);
+        referrer = url.hostname;
+      } catch {
+        // Keep original if URL parsing fails
+      }
+    }
+    
+    referrerCounts[referrer] = (referrerCounts[referrer] || 0) + 1;
+  });
+  
+  return Object.entries(referrerCounts)
+    .map(([referrer, count]) => ({ referrer, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+}
+
+function generateTopCountries(clickDetails) {
+  // Simple IP-based country detection (you can enhance this with a GeoIP service)
+  const countryCounts = {};
+  
+  clickDetails.forEach(click => {
+    // This is a simplified approach - in production, use a proper GeoIP service
+    let country = 'Unknown';
+    const ip = click.ipAddress;
+    
+    if (ip) {
+      // Basic IP range detection (you should replace this with proper GeoIP)
+      if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+        country = 'Local Network';
+      } else {
+        country = 'International'; // Placeholder
+      }
+    }
+    
+    countryCounts[country] = (countryCounts[country] || 0) + 1;
+  });
+  
+  return Object.entries(countryCounts)
+    .map(([country, count]) => ({ country, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+}
+
+function analyzeUserAgents(clickDetails) {
+  const devices = {};
+  const browsers = {};
+  const operatingSystems = {};
+  
+  clickDetails.forEach(click => {
+    const userAgent = click.userAgent || '';
+    
+    // Device detection
+    let device = 'Desktop';
+    if (/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)) {
+      if (/iPad/i.test(userAgent)) {
+        device = 'Tablet';
+      } else {
+        device = 'Mobile';
+      }
+    }
+    devices[device] = (devices[device] || 0) + 1;
+    
+    // Browser detection
+    let browser = 'Unknown';
+    if (userAgent.includes('Chrome')) browser = 'Chrome';
+    else if (userAgent.includes('Firefox')) browser = 'Firefox';
+    else if (userAgent.includes('Safari')) browser = 'Safari';
+    else if (userAgent.includes('Edge')) browser = 'Edge';
+    else if (userAgent.includes('Opera')) browser = 'Opera';
+    browsers[browser] = (browsers[browser] || 0) + 1;
+    
+    // OS detection
+    let os = 'Unknown';
+    if (userAgent.includes('Windows')) os = 'Windows';
+    else if (userAgent.includes('Mac OS')) os = 'macOS';
+    else if (userAgent.includes('Linux')) os = 'Linux';
+    else if (userAgent.includes('Android')) os = 'Android';
+    else if (userAgent.includes('iOS')) os = 'iOS';
+    operatingSystems[os] = (operatingSystems[os] || 0) + 1;
+  });
+  
+  return {
+    devices: Object.entries(devices)
+      .map(([device, count]) => ({ device, count }))
+      .sort((a, b) => b.count - a.count),
+    browsers: Object.entries(browsers)
+      .map(([browser, count]) => ({ browser, count }))
+      .sort((a, b) => b.count - a.count),
+    os: Object.entries(operatingSystems)
+      .map(([os, count]) => ({ os, count }))
+      .sort((a, b) => b.count - a.count)
+  };
+}
 
 app.delete("/:shortCode", authMiddleware, async (req, res) => {
   const { shortCode } = req.params;
