@@ -6,7 +6,6 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { customAlphabet } from "nanoid";
 import QRCode from "qrcode";
-import { createClient } from "redis";
 
 dotenv.config();
 
@@ -17,11 +16,6 @@ const backendUrl = process.env.BACKEND_URL || `http://localhost:${PORT}`;
 const jwtSecret = process.env.JWT_SECRET || "supersecretjwtkey";
 
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", 7);
-
-// Redis setup
-//const redisClient = createClient();
-//redisClient.on("error", (err) => console.error("Redis error:", err));
-//await redisClient.connect();
 
 app.use(cors({
   origin: "https://linkify-xi.vercel.app",
@@ -40,8 +34,7 @@ mongoose.connect(mongoUri)
   });
 
 // --- Schemas ---
-
-// User schema for auth
+// User schema
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true },
   passwordHash: { type: String, required: true },
@@ -54,7 +47,8 @@ const User = mongoose.model("User", userSchema);
 const urlSchema = new mongoose.Schema({
   shortCode: { type: String, required: true, unique: true },
   longUrl: { type: String, required: true },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // Link URL to user
+  shortUrl: { type: String, required: true }, 
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   clicks: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
   expiresAt: { type: Date },
@@ -71,8 +65,7 @@ const urlSchema = new mongoose.Schema({
 const URL = mongoose.model("URL", urlSchema);
 
 // --- Middleware ---
-
-// Auth middleware to protect routes and get user from JWT
+// Auth middleware
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
@@ -82,7 +75,7 @@ const authMiddleware = (req, res, next) => {
   const token = authHeader.split(" ")[1];
   try {
     const decoded = jwt.verify(token, jwtSecret);
-    req.user = decoded; // { userId, email }
+    req.user = decoded;
     next();
   } catch {
     return res.status(401).json({ error: "Unauthorized: Invalid token" });
@@ -90,13 +83,10 @@ const authMiddleware = (req, res, next) => {
 };
 
 // --- Routes ---
-
 // Health check
 app.get("/", (req, res) => res.send("Welcome to Linkify! Shorten your URLs here."));
 
-// --- Auth Routes ---
-
-// Register new user
+// Auth routes
 app.post("/auth/register", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -113,7 +103,6 @@ app.post("/auth/register", async (req, res) => {
     const user = new User({ email, passwordHash });
     await user.save();
 
-    // Create JWT token
     const token = jwt.sign({ userId: user._id, email: user.email }, jwtSecret, {
       expiresIn: "7d",
     });
@@ -125,7 +114,6 @@ app.post("/auth/register", async (req, res) => {
   }
 });
 
-// Login user
 app.post("/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -151,9 +139,7 @@ app.post("/auth/login", async (req, res) => {
   }
 });
 
-// --- URL Routes ---
-
-// Shorten URL (Authenticated route)
+// URL routes
 app.post("/shorten", authMiddleware, async (req, res) => {
   try {
     const { longUrl, customCode, expiresAt } = req.body;
@@ -169,16 +155,17 @@ app.post("/shorten", authMiddleware, async (req, res) => {
         return res.status(400).json({ error: "Custom code already in use" });
     }
 
+    const shortUrl = `${backendUrl}/${shortCode}`;
     const newUrl = new URL({
       longUrl,
       shortCode,
+      shortUrl,
       userId,
       expiresAt: expiresAt ? new Date(expiresAt) : undefined,
     });
 
     await newUrl.save();
 
-    const shortUrl = `${backendUrl}/${shortCode}`;
     const qrCode = await QRCode.toDataURL(shortUrl);
 
     res.json({ shortUrl, qrCode });
@@ -188,14 +175,11 @@ app.post("/shorten", authMiddleware, async (req, res) => {
   }
 });
 
-// Redirect URL (public)
+
 app.get("/:shortCode", async (req, res) => {
   const { shortCode } = req.params;
 
   try {
-    const cachedUrl = await redisClient.get(shortCode);
-    if (cachedUrl) return res.redirect(cachedUrl);
-
     const url = await URL.findOne({ shortCode });
     if (!url) return res.status(404).json({ error: "Short URL not found" });
 
@@ -210,8 +194,6 @@ app.get("/:shortCode", async (req, res) => {
     url.clickDetails.push({ ipAddress, userAgent, referrer });
     await url.save();
 
-    await redisClient.set(shortCode, url.longUrl, { EX: 3600 });
-
     res.redirect(url.longUrl);
   } catch (err) {
     console.error("Redirect error:", err);
@@ -219,7 +201,6 @@ app.get("/:shortCode", async (req, res) => {
   }
 });
 
-// Analytics (Authenticated route)
 app.get("/:shortCode/analytics", authMiddleware, async (req, res) => {
   const { shortCode } = req.params;
   const userId = req.user.userId;
@@ -245,27 +226,39 @@ app.get("/:shortCode/analytics", authMiddleware, async (req, res) => {
   }
 });
 
-// --- Add to URL Routes ---
-// Fetch all URLs for the authenticated user
-app.get("/user/urls", authMiddleware, async (req, res) => {
+app.delete("/:shortCode", authMiddleware, async (req, res) => {
+  const { shortCode } = req.params;
+  const userId = req.user.userId;
+
   try {
-    const userId = req.user.userId; // Extracted from auth middleware
+    const url = await URL.findOne({ shortCode });
+    if (!url) return res.status(404).json({ error: "Short URL not found" });
 
-    // Fetch URLs linked to the user
-    const userUrls = await URL.find({ userId }).sort({ createdAt: -1 });
+    // Ensure the user owns the URL
+    if (url.userId.toString() !== userId) {
+      return res.status(403).json({ error: "Forbidden: You do not own this URL" });
+    }
 
-    res.json({ urls: userUrls });
+    // Delete the URL
+    await URL.deleteOne({ shortCode });
+    res.json({ message: "URL deleted successfully" });
   } catch (err) {
-    console.error("Error fetching user URLs:", err);
+    console.error("Delete error:", err);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({ error: err.message || "Internal Server Error" });
+app.get("/user/urls", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const urls = await URL.find({ userId });
+    res.json({ urls });
+  } catch (err) {
+    console.error("Error fetching URLs:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
+
 
 app.listen(PORT, () => {
   console.log(`Server running on ${backendUrl}`);

@@ -1,24 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Link, 
-  Copy, 
-  ExternalLink, 
   BarChart3, 
   Calendar, 
   TrendingUp, 
   Eye, 
-  QrCode,
-  Clock,
-  Globe,
-  Trash2,
-  RefreshCw,
-  Download,
-  Share2,
   AlertCircle,
-  CheckCircle,
   Loader
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 // Enhanced Analytics Component
 const Analytics = ({ user }) => {
@@ -30,6 +19,7 @@ const Analytics = ({ user }) => {
   const [timeRange, setTimeRange] = useState("7d");
 
   const API_BASE_URL = "https://linkify-0cce.onrender.com";
+  //const API_BASE_URL = "http://localhost:5000";
 
   useEffect(() => {
     fetchUserUrls();

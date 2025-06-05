@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { LogOut, Link, BarChart3, Settings, Plus, Menu, X, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import AppFeatures from './AppFeatures';
+import UserUrls from './UserUrls';
+import Analytics from './Analytics';
 
 const Dashboard = ({ user, onLogout }) => {
   const [activeTab, setActiveTab] = useState('shorten');
@@ -208,11 +211,6 @@ const Dashboard = ({ user, onLogout }) => {
     </div>
   );
 };
-
-// Import your actual components
-import AppFeatures from './AppFeatures';
-import UserUrls from './UserUrls';
-import Analytics from './Analytics';
 
 // Settings Component
 const UserSettings = ({ user }) => {

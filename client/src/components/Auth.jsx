@@ -15,6 +15,7 @@ const Auth = ({ onAuthSuccess, onBack }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const API_BASE_URL = "https://linkify-0cce.onrender.com";
+  //const API_BASE_URL = "http://localhost:5000";
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

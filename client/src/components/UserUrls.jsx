@@ -20,8 +20,10 @@ const UserUrls = ({ user }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("createdAt");
+  const [success, setSuccess] = useState("");
   
   const API_BASE_URL = "https://linkify-0cce.onrender.com";
+  //const API_BASE_URL = "http://localhost:5000";
 
   useEffect(() => {
     fetchUserUrls();
@@ -48,29 +50,49 @@ const UserUrls = ({ user }) => {
     }
   };
 
-  const copyToClipboard = async (text) => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (err) {
-      setError("Failed to copy to clipboard");
-    }
-  };
+const copyToClipboard = async (shortUrl) => {
+  console.log(urls);
+  if (!shortUrl) {
+    setError("Invalid URL to copy!");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(shortUrl);
+    alert("Shortened URL copied to clipboard!");
+  } catch (err) {
+    setError("Failed to copy the URL. Please try again.");
+  }
+};
+
+
 
   const deleteUrl = async (shortCode) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/${shortCode}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      });
-      if (response.ok) {
-        setUrls(urls.filter(url => url.shortCode !== shortCode));
-      }
-    } catch (err) {
-      setError("Failed to delete URL");
+  setError("");
+  setSuccess("");
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/${shortCode}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${user.token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      setSuccess("URL deleted successfully!");
+      // Optionally refresh the list of URLs
+    } else {
+      setError(data.error);
     }
-  };
+  } catch (err) {
+    setError("Failed to delete the URL. Please try again later.");
+  }
+};
+
+
 
   const filteredUrls = urls.filter(url =>
     url.longUrl.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -95,10 +117,6 @@ const UserUrls = ({ user }) => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white">My URLs</h1>
-          <p className="text-gray-400">Manage all your shortened links</p>
-        </div>
         <button
           onClick={fetchUserUrls}
           className="btn-secondary flex items-center space-x-2"
@@ -111,7 +129,7 @@ const UserUrls = ({ user }) => {
       {/* Search and Filter */}
       <div className="card p-4">
         <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
+          <div className="flex-1 w-2/3">
             <input
               type="text"
               placeholder="Search URLs..."
@@ -121,7 +139,7 @@ const UserUrls = ({ user }) => {
             />
           </div>
           <select
-            className="input-field"
+            className="input-field w-1/3 "
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
           >
@@ -204,13 +222,14 @@ const UserUrls = ({ user }) => {
                   >
                     <Copy className="h-4 w-4 text-gray-400" />
                   </button>
-                  <button
-                    onClick={() => window.open(url.shortUrl, '_blank')}
-                    className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                    title="Open link"
-                  >
-                    <ExternalLink className="h-4 w-4 text-gray-400" />
-                  </button>
+<button
+  onClick={() => url.shortUrl && window.open(url.shortUrl, '_blank')}
+  className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+  title="Open link"
+>
+  <ExternalLink className="h-4 w-4 text-gray-400" />
+</button>
+
                   <button
                     onClick={() => deleteUrl(url.shortCode)}
                     className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors"
