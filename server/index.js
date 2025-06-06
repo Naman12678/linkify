@@ -37,12 +37,36 @@ mongoose.connect(mongoUri)
 // --- Schemas ---
 // User schema
 const userSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true, lowercase: true },
-  passwordHash: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+  },
+  passwordHash: {
+    type: String,
+    required: true,
+  },
+  displayName: {
+    type: String,
+    default: "", // Optional field, default is an empty string
+    trim: true,  // Removes leading/trailing whitespace
+  },
+  username: {
+    type: String,
+    unique: true, // Enforces uniqueness for username
+    sparse: true, // Allows documents without a username
+    trim: true,
+    lowercase: true,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
 const User = mongoose.model("User", userSchema);
+
 
 // URL schema
 const urlSchema = new mongoose.Schema({

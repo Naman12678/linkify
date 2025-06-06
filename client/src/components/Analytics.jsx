@@ -132,7 +132,7 @@ const Analytics = ({ user }) => {
               <option value="">Choose a URL...</option>
               {urls.map((url) => (
                 <option key={url.shortCode} value={url.shortCode}>
-                  {url.shortUrl} - {url.clicks || 0} clicks
+                  {url.shortUrl}
                 </option>
               ))}
             </select>
