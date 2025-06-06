@@ -18,8 +18,7 @@ const jwtSecret = process.env.JWT_SECRET || "supersecretjwtkey";
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", 7);
 
 app.use(cors({
-  origin: "https://linkify-xi.vercel.app",
-  //origin: "http://localhost:5173",
+  origin: '*',
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 }));
