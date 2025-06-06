@@ -28,12 +28,12 @@ const LandingPage = ({ onGetStarted }) => {
     }
   ];
 
-  const stats = [
-    { number: "50M+", label: "URLs Shortened" },
-    { number: "1B+", label: "Clicks Tracked" },
-    { number: "99.9%", label: "Uptime" },
-    { number: "180+", label: "Countries" }
-  ];
+  // const stats = [
+  //   { number: "50M+", label: "URLs Shortened" },
+  //   { number: "1B+", label: "Clicks Tracked" },
+  //   { number: "99.9%", label: "Uptime" },
+  //   { number: "180+", label: "Countries" }
+  // ];
 
   return (
     <div className="min-h-screen">
@@ -173,7 +173,7 @@ const LandingPage = ({ onGetStarted }) => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 bg-black/20">
+      {/*<section className="py-16 bg-black/20">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
@@ -191,8 +191,7 @@ const LandingPage = ({ onGetStarted }) => {
             ))}
           </div>
         </div>
-      </section>
-
+      </section> */}
       {/* Features Section */}
       <section id="features" className="py-20">
         <div className="container mx-auto px-6">
