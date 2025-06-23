@@ -3,6 +3,7 @@ import LandingPage from './components/LandingPage';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Analytics } from '@vercel/analytics'
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -90,6 +91,7 @@ const App = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <Analytics />
     </div>
   );
 };
