@@ -3,8 +3,7 @@ import LandingPage from './components/LandingPage';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Analytics } from '@vercel/analytics'
-
+import { Analytics } from "@vercel/analytics/react"
 const App = () => {
   const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('landing');
